@@ -1,6 +1,15 @@
 trigger:
 - main
 
+parameters:
+- name: action
+  displayName: 'Action'
+  type: string
+  default: 'create'
+  values:
+  - create
+  - delete
+
 pool:
   vmImage: 'ubuntu-latest'
 
@@ -10,6 +19,11 @@ steps:
     sshEndpoint: 'pfdockerpoc_sc'  # Define this in Azure DevOps Service Connections
     runOptions: 'inline'
     inline: |
-      echo 'This is a test file created by Azure DevOps Pipeline' > /tmp/devops_test.txt
-      ls -l /tmp/devops_test.txt
+      if [ "${{ parameters.action }}" == "create" ]; then
+        echo 'This is a test file created by Azure DevOps Pipeline' > /tmp/devops_test.txt
+        ls -l /tmp/devops_test.txt
+      elif [ "${{ parameters.action }}" == "delete" ]; then
+        rm -f /tmp/devops_test.txt
+        echo 'File deleted'
+      fi
     readyTimeout: '20000'
