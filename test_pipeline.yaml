@@ -7,8 +7,9 @@ parameters:
   type: string
   default: 'create'
   values:
-  - create
-  - delete
+    - create
+    - delete
+  uiHint: dropdown
 
 pool:
   vmImage: 'ubuntu-latest'
