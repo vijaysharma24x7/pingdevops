@@ -1,0 +1,15 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: SSH@0
+  inputs:
+    sshEndpoint: 'pfdockerpoc_sc'  # Define this in Azure DevOps Service Connections
+    runOptions: 'inline'
+    inline: |
+      echo 'This is a test file created by Azure DevOps Pipeline' > /tmp/devops_test.txt
+      ls -l /tmp/devops_test.txt
+    readyTimeout: '20000'
