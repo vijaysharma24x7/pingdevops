@@ -20,7 +20,7 @@ steps:
     runOptions: 'inline'
     inline: |
       if [ "${{ parameters.action }}" == "create" ]; then
-        echo 'I love my beautiful wife' > /tmp/devops_test.txt
+        echo 'I love my lovely and beautiful wife' > /tmp/devops_test.txt
         ls -l /tmp/devops_test.txt
       elif [ "${{ parameters.action }}" == "delete" ]; then
         rm -f /tmp/devops_test.txt
