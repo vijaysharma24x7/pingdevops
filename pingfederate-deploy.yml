@@ -26,10 +26,7 @@ stages:
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
-          # mkdir -p $(downloadPath)
-          az upgrade --yes
-          az logout
-          az account clear
+         mkdir -p $(downloadPath)
       #    az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(jdkBlobName) --file "$(downloadPath)/$(jdkBlobName)" --sas-token "$(sasToken)"
       #    az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(pfBlobName) --file "$(downloadPath)/$(pfBlobName)" --sas-token "$(sasToken)"
       displayName: 'Download JDK and PingFederate from Azure Blob Storage'
