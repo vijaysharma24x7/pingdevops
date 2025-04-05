@@ -2,50 +2,61 @@ trigger:
 - main
 
 variables:
-  storageAccount: '<your-storage-account-name>'
-  containerName: '<your-container-name>'
-  jdkBlobName: 'jdk.tar.gz'
-  pfBlobName: 'pingfederate.zip'
-  downloadPath: '$(Agent.TempDirectory)/downloads'
-  installPath: '/opt/pingfederate'
-
-  # Use Azure DevOps Library or pipeline secrets for this
+  storageAccount: 'ramanstorage2025'
+  containerName: 'storage'
+  jdkBlobName: 'jdk-11.0.20_linux-x64_bin.tar.gz'
+  pfBlobName: 'pingfederate-12.2.0.zip'
+  downloadPath: '$(Pipeline.Workspace)/downloads'
+  remotePath: '/root/pfdeploy'  # adjust remote user path
+  installPath: '/datadrive/pingfederate'
   sasToken: $(AZURE_STORAGE_SAS_TOKEN)
 
 pool:
-  vmImage: 'ubuntu-latest'  # Or use a self-hosted agent on the Linux VM
+  vmImage: 'ubuntu-latest'
 
 stages:
-- stage: DownloadAndInstall
+- stage: DeployPingFederate
   jobs:
-  - job: DeployPingFederate
+  - job: DownloadAndDeploy
     steps:
 
-    - script: |
-        mkdir -p $(downloadPath)
-      displayName: 'Create download directory'
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'Visual Studio Enterprise Subscription'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          mkdir -p $(downloadPath)
+          az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(jdkBlobName) --file "$(downloadPath)/$(jdkBlobName)" --sas-token "$(sasToken)"
+          az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(pfBlobName) --file "$(downloadPath)/$(pfBlobName)" --sas-token "$(sasToken)"
+      displayName: 'Download JDK and PingFederate from Azure Blob Storage'
 
-    - script: |
-        echo "Downloading JDK and PingFederate..."
-        az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(jdkBlobName) --file "$(downloadPath)/$(jdkBlobName)" --sas-token "$(sasToken)"
-        az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(pfBlobName) --file "$(downloadPath)/$(pfBlobName)" --sas-token "$(sasToken)"
-      env:
-        AZURE_STORAGE_SAS_TOKEN: $(sasToken)
-      displayName: 'Download artifacts from Azure Storage'
+    - task: CopyFilesOverSSH@0
+      inputs:
+        sshEndpoint: 'pfdockerpoc_sc'
+        sourceFolder: '$(downloadPath)'
+        contents: '**'
+        targetFolder: '$(remotePath)'
+      displayName: 'Copy files to remote server'
 
-    - script: |
-        sudo mkdir -p /opt/jdk
-        sudo tar -xzf "$(downloadPath)/$(jdkBlobName)" -C /opt/jdk --strip-components=1
-        echo 'export JAVA_HOME=/opt/jdk' | sudo tee -a /etc/profile
-        echo 'export PATH=$JAVA_HOME/bin:$PATH' | sudo tee -a /etc/profile
-        source /etc/profile
-      displayName: 'Install JDK'
+    - task: SSH@0
+      inputs:
+        sshEndpoint: 'pfdockerpoc_sc'
+        runOptions: 'commands'
+        command: |
+          echo "Installing JDK..."
+          sudo mkdir -p /datadrive/jdk
+          sudo tar -xzf $(remotePath)/$(jdkBlobName) -C /datadrive/jdk --strip-components=1
+          echo 'export JAVA_HOME=/datadrive/jdk' | sudo tee -a /etc/profile
+          echo 'export PATH=$JAVA_HOME/bin:$PATH' | sudo tee -a /etc/profile
+          source /etc/profile
 
-    - script: |
-        sudo mkdir -p $(installPath)
-        sudo unzip -q "$(downloadPath)/$(pfBlobName)" -d $(installPath)
-      displayName: 'Extract PingFederate'
+          echo "Installing PingFederate..."
+          sudo mkdir -p $(installPath)
+          sudo unzip -q $(remotePath)/$(pfBlobName) -d $(installPath)
 
-    - script: |
-        echo "PingFederate installed in $(installPath)"
-      displayName: 'Confirm installation'
+          echo "Starting PingFederate..."
+          sudo nohup $(installPath)/pingfederate/sbin/pingfederate-run.sh > $(installPath)/pingfederate/logs/start.log 2>&1 &
+          sleep 10
+          tail -n 20 $(installPath)/pingfederate/logs/server.log || true
+      displayName: 'Install and Start PingFederate on Remote Server'
