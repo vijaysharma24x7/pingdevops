@@ -22,7 +22,7 @@ stages:
 
     - task: AzureCLI@2
       inputs:
-        azureSubscription: 'parm_sc'
+        azureSubscription: 'arm_sc'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
