@@ -1,0 +1,51 @@
+trigger:
+- main
+
+variables:
+  storageAccount: '<your-storage-account-name>'
+  containerName: '<your-container-name>'
+  jdkBlobName: 'jdk.tar.gz'
+  pfBlobName: 'pingfederate.zip'
+  downloadPath: '$(Agent.TempDirectory)/downloads'
+  installPath: '/opt/pingfederate'
+
+  # Use Azure DevOps Library or pipeline secrets for this
+  sasToken: $(AZURE_STORAGE_SAS_TOKEN)
+
+pool:
+  vmImage: 'ubuntu-latest'  # Or use a self-hosted agent on the Linux VM
+
+stages:
+- stage: DownloadAndInstall
+  jobs:
+  - job: DeployPingFederate
+    steps:
+
+    - script: |
+        mkdir -p $(downloadPath)
+      displayName: 'Create download directory'
+
+    - script: |
+        echo "Downloading JDK and PingFederate..."
+        az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(jdkBlobName) --file "$(downloadPath)/$(jdkBlobName)" --sas-token "$(sasToken)"
+        az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(pfBlobName) --file "$(downloadPath)/$(pfBlobName)" --sas-token "$(sasToken)"
+      env:
+        AZURE_STORAGE_SAS_TOKEN: $(sasToken)
+      displayName: 'Download artifacts from Azure Storage'
+
+    - script: |
+        sudo mkdir -p /opt/jdk
+        sudo tar -xzf "$(downloadPath)/$(jdkBlobName)" -C /opt/jdk --strip-components=1
+        echo 'export JAVA_HOME=/opt/jdk' | sudo tee -a /etc/profile
+        echo 'export PATH=$JAVA_HOME/bin:$PATH' | sudo tee -a /etc/profile
+        source /etc/profile
+      displayName: 'Install JDK'
+
+    - script: |
+        sudo mkdir -p $(installPath)
+        sudo unzip -q "$(downloadPath)/$(pfBlobName)" -d $(installPath)
+      displayName: 'Extract PingFederate'
+
+    - script: |
+        echo "PingFederate installed in $(installPath)"
+      displayName: 'Confirm installation'
