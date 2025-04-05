@@ -22,7 +22,7 @@ stages:
 
     - task: AzureCLI@2
       inputs:
-        azureSubscription: 'arm_sc'
+        azureSubscription: 'pfdockerpoc_sc'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
