@@ -26,11 +26,11 @@ stages:
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
-          mkdir -p $(downloadPath)
+          # mkdir -p $(downloadPath)
           az logout
           az account clear
-          az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(jdkBlobName) --file "$(downloadPath)/$(jdkBlobName)" --sas-token "$(sasToken)"
-          az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(pfBlobName) --file "$(downloadPath)/$(pfBlobName)" --sas-token "$(sasToken)"
+      #    az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(jdkBlobName) --file "$(downloadPath)/$(jdkBlobName)" --sas-token "$(sasToken)"
+      #    az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(pfBlobName) --file "$(downloadPath)/$(pfBlobName)" --sas-token "$(sasToken)"
       displayName: 'Download JDK and PingFederate from Azure Blob Storage'
 
     - task: CopyFilesOverSSH@0
