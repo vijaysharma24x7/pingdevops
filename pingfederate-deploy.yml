@@ -22,7 +22,7 @@ stages:
 
     - task: AzureCLI@2
       inputs:
-        # azureSubscription: 'raman_rg_sc'
+        azureSubscription: 'raman_rg_sc'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
