@@ -9,7 +9,7 @@ variables:
   downloadPath: '$(Pipeline.Workspace)/downloads'
   remotePath: '/root/pfdeploy'  # adjust remote user path
   installPath: '/datadrive/pingfederate'
-  sasToken: '/sv=2024-11-04&ss=bfqt&srt=c&sp=rwdlacupiytfx&se=2026-05-08T21:34:48Z&st=2025-04-05T13:34:48Z&spr=https&sig=pyNG%2BbVken4ueceSu1Z311DYOXOwLtifHr7JriwNcdw%3D'
+  sasToken: 'sv=2024-11-04&ss=bfqt&srt=c&sp=rwdlacupiytfx&se=2026-05-08T21:34:48Z&st=2025-04-05T13:34:48Z&spr=https&sig=pyNG%2BbVken4ueceSu1Z311DYOXOwLtifHr7JriwNcdw%3D'
 
 pool:
   vmImage: 'ubuntu-latest'
