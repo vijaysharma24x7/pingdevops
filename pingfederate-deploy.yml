@@ -27,6 +27,7 @@ stages:
         scriptLocation: 'inlineScript'
         inlineScript: |
           # mkdir -p $(downloadPath)
+          az upgrade
           az logout
           az account clear
       #    az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(jdkBlobName) --file "$(downloadPath)/$(jdkBlobName)" --sas-token "$(sasToken)"
