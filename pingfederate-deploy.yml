@@ -27,6 +27,8 @@ stages:
         scriptLocation: 'inlineScript'
         inlineScript: |
          mkdir -p $(downloadPath)
+          az login --service-principal -u 2ddc0282-82c8-43b9-99a5-edf20854beb5 --password=pt48Q~L.SFGCh13Guoj2VPDUjcISY-NGxJtucbJS --tenant 7f9138ce-0f6a-4fbb-97d8-0afaf5638e4c --allow-no-subscriptions
+          az account show
           az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(jdkBlobName) --file "$(downloadPath)/$(jdkBlobName)" --sas-token "$(sasToken)"
           az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(pfBlobName) --file "$(downloadPath)/$(pfBlobName)" --sas-token "$(sasToken)"
       displayName: 'Download JDK and PingFederate from Azure Blob Storage'
