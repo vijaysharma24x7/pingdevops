@@ -6,9 +6,9 @@ variables:
   PF_URL: "https://vijay101.blob.core.windows.net/storage/pingfederate-12.2.0.zip"
   JDK_FILENAME: "jdk-11.0.20_linux-x64_bin.tar.gz"
   PF_FILENAME: "pingfederate-12.2.0.zip"
-  INSTALL_DIR: "/datadrive"
-  JAVA_DIR: "/datadrive/jdk"
-  PF_DIR: "/datadrive/pingfederate"
+  INSTALL_DIR: "/datadrive/pingdevops"
+  JAVA_DIR: "/datadrive/pingdevops/jdk"
+  PF_DIR: "/datadrive/pingdevops"
 
 stages:
 - stage: DeployPingFederate
@@ -64,7 +64,7 @@ stages:
           sudo mv $(INSTALL_DIR)/pingfederate-* $(PF_DIR)
 
           echo "Starting PingFederate..."
-          sudo nohup $(PF_DIR)/pingfederate/bin/run.sh &
+          sudo nohup $(PF_DIR)/pingfederate-12.2.0/bin/run.sh &
 
           echo "Deployment complete."
       displayName: Install JDK & PingFederate and Start Server
