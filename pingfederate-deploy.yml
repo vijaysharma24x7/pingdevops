@@ -64,7 +64,7 @@ stages:
           sudo mv $(INSTALL_DIR)/pingfederate-* $(PF_DIR)
 
           echo "Starting PingFederate..."
-          sudo nohup $(PF_DIR)/pingfederate-12.2.0/bin/run.sh &
+          sudo nohup $(PF_DIR)/pingfederate-12.2.0/pingfederate/bin/run.sh &
 
           echo "Deployment complete."
       displayName: Install JDK & PingFederate and Start Server
