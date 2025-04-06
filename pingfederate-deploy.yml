@@ -2,63 +2,69 @@ trigger:
 - main
 
 variables:
-  storageAccount: 'ramanstorage2025'
-  containerName: 'storage'
-  jdkBlobName: 'jdk-11.0.20_linux-x64_bin.tar.gz'
-  pfBlobName: 'pingfederate-12.2.0.zip'
-  downloadPath: '$(Pipeline.Workspace)/downloads'
-  remotePath: '/root/pfdeploy'  # adjust remote user path
-  installPath: '/datadrive/pingfederate'
-  sasToken: 'sv=2024-11-04&ss=bfqt&srt=c&sp=rwdlacupiytfx&se=2026-05-08T21:34:48Z&st=2025-04-05T13:34:48Z&spr=https&sig=pyNG%2BbVken4ueceSu1Z311DYOXOwLtifHr7JriwNcdw%3D'
-
-pool:
-  vmImage: 'ubuntu-latest'
+  JDK_URL: "https://vijay101.blob.core.windows.net/storage/jdk-11.0.20_linux-x64_bin.tar.gz"
+  PF_URL: "https://vijay101.blob.core.windows.net/storage/pingfederate-12.2.0.zip"
+  JDK_FILENAME: "jdk-11.0.20_linux-x64_bin.tar.gz"
+  PF_FILENAME: "pingfederate-12.2.0.zip"
+  INSTALL_DIR: "/datadrive"
+  JAVA_DIR: "/datadrive/jdk"
+  PF_DIR: "/datadrive/pingfederate"
 
 stages:
 - stage: DeployPingFederate
+  displayName: Deploy and Start PingFederate
   jobs:
   - job: DownloadAndDeploy
-    steps:
+    displayName: Download and Install
+    pool:
+      vmImage: 'ubuntu-latest'
 
-    - task: AzureCLI@2
-      inputs:
-        azureSubscription: 'arm_sc'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-         mkdir -p $(downloadPath)
-          az login --service-principal -u 2ddc0282-82c8-43b9-99a5-edf20854beb5 --password=pt48Q~L.SFGCh13Guoj2VPDUjcISY-NGxJtucbJS --tenant 7f9138ce-0f6a-4fbb-97d8-0afaf5638e4c --allow-no-subscriptions
-          az account show
-          az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(jdkBlobName) --file "$(downloadPath)/$(jdkBlobName)" --sas-token "$(sasToken)"
-          az storage blob download --account-name $(storageAccount) --container-name $(containerName) --name $(pfBlobName) --file "$(downloadPath)/$(pfBlobName)" --sas-token "$(sasToken)"
-      displayName: 'Download JDK and PingFederate from Azure Blob Storage'
+    steps:
+    - script: |
+        echo "Downloading JDK..."
+        curl -o $(JDK_FILENAME) $(JDK_URL)
+
+        echo "Downloading PingFederate..."
+        curl -o $(PF_FILENAME) $(PF_URL)
+      displayName: Download JDK and PingFederate
 
     - task: CopyFilesOverSSH@0
+      name: CopyFiles
       inputs:
         sshEndpoint: 'pfdockerpoc_sc'
-        sourceFolder: '$(downloadPath)'
-        contents: '**'
-        targetFolder: '$(remotePath)'
-      displayName: 'Copy files to remote server'
+        sourceFolder: '$(System.DefaultWorkingDirectory)'
+        contents: |
+          $(JDK_FILENAME)
+          $(PF_FILENAME)
+        targetFolder: '/tmp'
+      displayName: Copy files to Linux server
 
     - task: SSH@0
+      name: InstallAndStart
       inputs:
         sshEndpoint: 'pfdockerpoc_sc'
-        runOptions: 'commands'
-        command: |
-          echo "Installing JDK..."
-          sudo mkdir -p /datadrive/jdk
-          sudo tar -xzf $(remotePath)/$(jdkBlobName) -C /datadrive/jdk --strip-components=1
-          echo 'export JAVA_HOME=/datadrive/jdk' | sudo tee -a /etc/profile
-          echo 'export PATH=$JAVA_HOME/bin:$PATH' | sudo tee -a /etc/profile
+        runOptions: inline
+        inline: |
+          echo "Creating install directory if not exists..."
+          sudo mkdir -p $(INSTALL_DIR)
+          sudo chmod -R 755 $(INSTALL_DIR)
+
+          echo "Extracting JDK..."
+          sudo tar -xzf /tmp/$(JDK_FILENAME) -C $(INSTALL_DIR)
+          JDK_EXTRACTED_DIR=$(tar -tf /tmp/$(JDK_FILENAME) | head -1 | cut -f1 -d"/")
+          sudo mv $(INSTALL_DIR)/$JDK_EXTRACTED_DIR $(JAVA_DIR)
+
+          echo "Setting JAVA_HOME in .bashrc..."
+          echo "export JAVA_HOME=$(JAVA_DIR)" | sudo tee -a /etc/profile
+          echo "export PATH=\$JAVA_HOME/bin:\$PATH" | sudo tee -a /etc/profile
           source /etc/profile
 
-          echo "Installing PingFederate..."
-          sudo mkdir -p $(installPath)
-          sudo unzip -q $(remotePath)/$(pfBlobName) -d $(installPath)
+          echo "Unzipping PingFederate..."
+          sudo unzip -o /tmp/$(PF_FILENAME) -d $(INSTALL_DIR)
+          sudo mv $(INSTALL_DIR)/pingfederate-* $(PF_DIR)
 
           echo "Starting PingFederate..."
-          sudo nohup $(installPath)/pingfederate/sbin/pingfederate-run.sh > $(installPath)/pingfederate/logs/start.log 2>&1 &
-          sleep 10
-          tail -n 20 $(installPath)/pingfederate/logs/server.log || true
-      displayName: 'Install and Start PingFederate on Remote Server'
+          sudo nohup $(PF_DIR)/pingfederate/bin/run.sh &
+
+          echo "Deployment complete."
+      displayName: Install JDK & PingFederate and Start Server
