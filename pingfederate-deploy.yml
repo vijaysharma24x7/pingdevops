@@ -8,7 +8,7 @@ variables:
   PF_FILENAME: "pingfederate-12.2.0.zip"
   INSTALL_DIR: "/datadrive/pingdevops"
   JAVA_DIR: "/datadrive/pingdevops/jdk"
-  PF_DIR: "/datadrive/pingdevops"
+  PF_DIR: "/datadrive/pingdevops/pf"
 
 stages:
 - stage: DeployPingFederate
