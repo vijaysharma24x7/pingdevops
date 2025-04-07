@@ -58,13 +58,14 @@ stages:
           echo "export JAVA_HOME=$(JAVA_DIR)" | sudo tee -a /etc/profile
           echo "export PATH=\$JAVA_HOME/bin:\$PATH" | sudo tee -a /etc/profile
           source /etc/profile
-          env
+          
 
           echo "Unzipping PingFederate..."
           sudo unzip -o /tmp/$(PF_FILENAME) -d $(INSTALL_DIR)
           sudo mv $(INSTALL_DIR)/pingfederate-* $(PF_DIR)
 
           echo "Starting PingFederate..."
+          env
           sudo nohup $(PF_DIR)/pingfederate-12.2.0/pingfederate/bin/run.sh &
 
           echo "Deployment complete."
