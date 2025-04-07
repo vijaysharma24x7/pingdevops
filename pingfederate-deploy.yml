@@ -30,7 +30,6 @@ stages:
     displayName: Deploy and Start PingFederate
     pool:
       vmImage: 'ubuntu-latest'
-    environment: 'production'
     strategy:
       runOnce:
         deploy:
@@ -88,7 +87,6 @@ stages:
     displayName: Delete PingFederate Deployment
     pool:
       vmImage: 'ubuntu-latest'
-    environment: 'production'
     strategy:
       runOnce:
         deploy:
