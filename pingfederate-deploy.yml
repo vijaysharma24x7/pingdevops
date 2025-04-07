@@ -1,5 +1,5 @@
 trigger:
-- main
+- none
 
 variables:
   JDK_URL: "https://vijay101.blob.core.windows.net/storage/jdk-11.0.20_linux-x64_bin.tar.gz"
@@ -10,89 +10,105 @@ variables:
   JAVA_DIR: "/datadrive/pingdevops/jdk"
   PF_DIR: "/datadrive/pingdevops"
 
-stages:
-- stage: DeployPingFederate
+jobs:
+- job: DeployPingFederate
   displayName: Deploy and Start PingFederate
-  jobs:
-  - job: DownloadAndDeploy
-    displayName: Download and Install
-    pool:
-      vmImage: 'ubuntu-latest'
+  condition: eq(variables['Build.Reason'], 'Manual')
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - script: |
+      echo "Downloading JDK..."
+      curl -o $(JDK_FILENAME) $(JDK_URL)
 
-    steps:
-    - script: |
-        echo "Downloading JDK..."
-        curl -o $(JDK_FILENAME) $(JDK_URL)
+      echo "Downloading PingFederate..."
+      curl -o $(PF_FILENAME) $(PF_URL)
+    displayName: Download JDK and PingFederate
 
-        echo "Downloading PingFederate..."
-        curl -o $(PF_FILENAME) $(PF_URL)
-      displayName: Download JDK and PingFederate
+  - task: CopyFilesOverSSH@0
+    name: CopyFiles
+    inputs:
+      sshEndpoint: 'pfdockerpoc_sc'
+      sourceFolder: '$(System.DefaultWorkingDirectory)'
+      contents: |
+        $(JDK_FILENAME)
+        $(PF_FILENAME)
+      targetFolder: '/tmp'
+    displayName: Copy files to Linux server
 
-    - task: CopyFilesOverSSH@0
-      name: CopyFiles
-      inputs:
-        sshEndpoint: 'pfdockerpoc_sc'
-        sourceFolder: '$(System.DefaultWorkingDirectory)'
-        contents: |
-          $(JDK_FILENAME)
-          $(PF_FILENAME)
-        targetFolder: '/tmp'
-      displayName: Copy files to Linux server
+  - task: SSH@0
+    name: InstallAndStart
+    inputs:
+      sshEndpoint: 'pfdockerpoc_sc'
+      runOptions: inline
+      inline: |
+        echo "Creating install directory if not exists..."
+        sudo mkdir -p $(INSTALL_DIR)
+        sudo chmod -R 755 $(INSTALL_DIR)
 
-    - task: SSH@0
-      name: InstallAndStart
-      inputs:
-        sshEndpoint: 'pfdockerpoc_sc'
-        runOptions: inline
-        inline: |
-          echo "Creating install directory if not exists..."
-          sudo mkdir -p $(INSTALL_DIR)
-          sudo chmod -R 755 $(INSTALL_DIR)
+        echo "Extracting JDK..."
+        sudo tar -xzf /tmp/$(JDK_FILENAME) -C $(INSTALL_DIR)
+        JDK_EXTRACTED_DIR=$(tar -tf /tmp/$(JDK_FILENAME) | head -1 | cut -f1 -d"/")
+        sudo mv $(INSTALL_DIR)/$JDK_EXTRACTED_DIR $(JAVA_DIR)
 
-          echo "Extracting JDK..."
-          sudo tar -xzf /tmp/$(JDK_FILENAME) -C $(INSTALL_DIR)
-          JDK_EXTRACTED_DIR=$(tar -tf /tmp/$(JDK_FILENAME) | head -1 | cut -f1 -d"/")
-          sudo mv $(INSTALL_DIR)/$JDK_EXTRACTED_DIR $(JAVA_DIR)
+        echo "Setting JAVA_HOME in .bashrc..."
+        echo "export JAVA_HOME=$(JAVA_DIR)" | sudo tee -a /etc/profile
+        echo "export PATH=\$JAVA_HOME/bin:\$PATH" | sudo tee -a /etc/profile
+        source /etc/profile
 
-          echo "Setting JAVA_HOME in .bashrc..."
-          echo "export JAVA_HOME=$(JAVA_DIR)" | sudo tee -a /etc/profile
-          echo "export PATH=\$JAVA_HOME/bin:\$PATH" | sudo tee -a /etc/profile
-          source /etc/profile
+        echo "Unzipping PingFederate..."
+        sudo unzip -o /tmp/$(PF_FILENAME) -d $(INSTALL_DIR)
 
-          echo "Unzipping PingFederate..."
-          sudo unzip -o /tmp/$(PF_FILENAME) -d $(INSTALL_DIR)
+        echo "Starting PingFederate..."
+        export JAVA_HOME=/datadrive/pingdevops/jdk
+        $(PF_DIR)/pingfederate-12.2.0/pingfederate/sbin/pingfederate-run.sh
 
-          echo "Starting PingFederate..."
-          export JAVA_HOME=/datadrive/pingdevops/jdk
-          $(PF_DIR)/pingfederate-12.2.0/pingfederate/sbin/pingfederate-run.sh
+        echo "Deployment complete."
+    displayName: Install JDK & PingFederate and Start Server
 
-          echo "Deployment complete."
-      displayName: Install JDK & PingFederate and Start Server
-
-- stage: DeletePingFederate
+- job: DeletePingFederate
   displayName: Delete PingFederate Deployment
-  jobs:
-  - job: DeleteDeployment
-    displayName: Delete Deployment
-    pool:
-      vmImage: 'ubuntu-latest'
+  condition: eq(variables['Build.Reason'], 'Manual')
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - task: SSH@0
+    name: StopAndDelete
+    inputs:
+      sshEndpoint: 'pfdockerpoc_sc'
+      runOptions: inline
+      inline: |
+        echo "Stopping PingFederate..."
+        pkill -f pingfederate
 
-    steps:
-    - task: SSH@0
-      name: StopAndDelete
-      inputs:
-        sshEndpoint: 'pfdockerpoc_sc'
-        runOptions: inline
-        inline: |
-          echo "Stopping PingFederate..."
-          pkill -f pingfederate
+        echo "Removing installation directory..."
+        sudo rm -rf $(INSTALL_DIR)
 
-          echo "Removing installation directory..."
-          sudo rm -rf $(INSTALL_DIR)
+        echo "Removing JDK and PingFederate files from /tmp..."
+        sudo rm -f /tmp/$(JDK_FILENAME)
+        sudo rm -f /tmp/$(PF_FILENAME)
 
-          echo "Removing JDK and PingFederate files from /tmp..."
-          sudo rm -f /tmp/$(JDK_FILENAME)
-          sudo rm -f /tmp/$(PF_FILENAME)
+        echo "Deployment deleted."
+    displayName: Stop PingFederate and Delete Installation
 
-          echo "Deployment deleted."
-      displayName: Stop PingFederate and Delete Installation
+- job: ManualTriggerDeploy
+  displayName: Manual Trigger for Deploy
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - script: |
+      echo "##vso[task.setvariable variable=Build.Reason;issecret=false;]Manual"
+      echo "Triggering DeployPingFederate job..."
+      echo "##vso[build.queue job=DeployPingFederate]"
+    displayName: Trigger DeployPingFederate Job
+
+- job: ManualTriggerDelete
+  displayName: Manual Trigger for Delete
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - script: |
+      echo "##vso[task.setvariable variable=Build.Reason;issecret=false;]Manual"
+      echo "Triggering DeletePingFederate job..."
+      echo "##vso[build.queue job=DeletePingFederate]"
+    displayName: Trigger DeletePingFederate Job
