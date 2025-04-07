@@ -22,92 +22,85 @@ parameters:
   - 'deploy'
   - 'delete'
 
-stages:
-- stage: DeployPingFederate
-  displayName: Deploy or Delete PingFederate
-  jobs:
-  - deployment: DeployPingFederate
-    displayName: Deploy and Start PingFederate
-    pool:
-      vmImage: 'ubuntu-latest'
-    environment: 'production'
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - script: |
-              echo "Downloading JDK..."
-              curl -o $(JDK_FILENAME) $(JDK_URL)
+jobs:
+- job: DeployPingFederate
+  displayName: Deploy and Start PingFederate
+  condition: and(succeeded(), eq('${{ parameters.action }}', 'deploy'))
+  pool:
+    vmImage: 'ubuntu-latest'
 
-              echo "Downloading PingFederate..."
-              curl -o $(PF_FILENAME) $(PF_URL)
-            displayName: Download JDK and PingFederate
+  steps:
+  - script: |
+      echo "Downloading JDK..."
+      curl -o $(JDK_FILENAME) $(JDK_URL)
 
-          - task: CopyFilesOverSSH@0
-            name: CopyFiles
-            inputs:
-              sshEndpoint: 'pfdockerpoc_sc'
-              sourceFolder: '$(System.DefaultWorkingDirectory)'
-              contents: |
-                $(JDK_FILENAME)
-                $(PF_FILENAME)
-              targetFolder: '/tmp'
-            displayName: Copy files to Linux server
+      echo "Downloading PingFederate..."
+      curl -o $(PF_FILENAME) $(PF_URL)
+    displayName: Download JDK and PingFederate
 
-          - task: SSH@0
-            name: InstallAndStart
-            inputs:
-              sshEndpoint: 'pfdockerpoc_sc'
-              runOptions: inline
-              inline: |
-                echo "Creating install directory if not exists..."
-                sudo mkdir -p $(INSTALL_DIR)
-                sudo chmod -R 755 $(INSTALL_DIR)
+  - task: CopyFilesOverSSH@0
+    name: CopyFiles
+    inputs:
+      sshEndpoint: 'pfdockerpoc_sc'
+      sourceFolder: '$(System.DefaultWorkingDirectory)'
+      contents: |
+        $(JDK_FILENAME)
+        $(PF_FILENAME)
+      targetFolder: '/tmp'
+    displayName: Copy files to Linux server
 
-                echo "Extracting JDK..."
-                sudo tar -xzf /tmp/$(JDK_FILENAME) -C $(INSTALL_DIR)
-                JDK_EXTRACTED_DIR=$(tar -tf /tmp/$(JDK_FILENAME) | head -1 | cut -f1 -d"/")
-                sudo mv $(INSTALL_DIR)/$JDK_EXTRACTED_DIR $(JAVA_DIR)
+  - task: SSH@0
+    name: InstallAndStart
+    inputs:
+      sshEndpoint: 'pfdockerpoc_sc'
+      runOptions: inline
+      inline: |
+        echo "Creating install directory if not exists..."
+        sudo mkdir -p $(INSTALL_DIR)
+        sudo chmod -R 755 $(INSTALL_DIR)
 
-                echo "Setting JAVA_HOME in .bashrc..."
-                echo "export JAVA_HOME=$(JAVA_DIR)" | sudo tee -a /etc/profile
-                echo "export PATH=\$JAVA_HOME/bin:\$PATH" | sudo tee -a /etc/profile
-                source /etc/profile
+        echo "Extracting JDK..."
+        sudo tar -xzf /tmp/$(JDK_FILENAME) -C $(INSTALL_DIR)
+        JDK_EXTRACTED_DIR=$(tar -tf /tmp/$(JDK_FILENAME) | head -1 | cut -f1 -d"/")
+        sudo mv $(INSTALL_DIR)/$JDK_EXTRACTED_DIR $(JAVA_DIR)
 
-                echo "Unzipping PingFederate..."
-                sudo unzip -o /tmp/$(PF_FILENAME) -d $(INSTALL_DIR)
+        echo "Setting JAVA_HOME in .bashrc..."
+        echo "export JAVA_HOME=$(JAVA_DIR)" | sudo tee -a /etc/profile
+        echo "export PATH=\$JAVA_HOME/bin:\$PATH" | sudo tee -a /etc/profile
+        source /etc/profile
 
-                echo "Starting PingFederate..."
-                export JAVA_HOME=/datadrive/pingdevops/jdk
-                $(PF_DIR)/pingfederate-12.2.0/pingfederate/sbin/pingfederate-run.sh
+        echo "Unzipping PingFederate..."
+        sudo unzip -o /tmp/$(PF_FILENAME) -d $(INSTALL_DIR)
 
-                echo "Deployment complete."
-            displayName: Install JDK & PingFederate and Start Server
+        echo "Starting PingFederate..."
+        export JAVA_HOME=/datadrive/pingdevops/jdk
+        $(PF_DIR)/pingfederate-12.2.0/pingfederate/sbin/pingfederate-run.sh
 
-  - deployment: DeletePingFederate
-    displayName: Delete PingFederate Deployment
-    pool:
-      vmImage: 'ubuntu-latest'
-    environment: 'production'
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: SSH@0
-            name: StopAndDelete
-            inputs:
-              sshEndpoint: 'pfdockerpoc_sc'
-              runOptions: inline
-              inline: |
-                echo "Stopping PingFederate..."
-                pkill -f pingfederate
+        echo "Deployment complete."
+    displayName: Install JDK & PingFederate and Start Server
 
-                echo "Removing installation directory..."
-                sudo rm -rf $(INSTALL_DIR)
+- job: DeletePingFederate
+  displayName: Delete PingFederate Deployment
+  condition: and(succeeded(), eq('${{ parameters.action }}', 'delete'))
+  pool:
+    vmImage: 'ubuntu-latest'
 
-                echo "Removing JDK and PingFederate files from /tmp..."
-                sudo rm -f /tmp/$(JDK_FILENAME)
-                sudo rm -f /tmp/$(PF_FILENAME)
+  steps:
+  - task: SSH@0
+    name: StopAndDelete
+    inputs:
+      sshEndpoint: 'pfdockerpoc_sc'
+      runOptions: inline
+      inline: |
+        echo "Stopping PingFederate..."
+        pkill -f pingfederate
 
-                echo "Deployment deleted."
-            displayName: Stop PingFederate and Delete Installation
+        echo "Removing installation directory..."
+        sudo rm -rf $(INSTALL_DIR)
+
+        echo "Removing JDK and PingFederate files from /tmp..."
+        sudo rm -f /tmp/$(JDK_FILENAME)
+        sudo rm -f /tmp/$(PF_FILENAME)
+
+        echo "Deployment deleted."
+    displayName: Stop PingFederate and Delete Installation
