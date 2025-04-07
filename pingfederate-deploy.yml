@@ -65,7 +65,7 @@ stages:
           sudo mv $(INSTALL_DIR)/pingfederate-* $(PF_DIR)
 
           echo "Starting PingFederate..."
-          env
+          export JAVA_HOME/datadrive/pingdevops/jdk
           sudo nohup $(PF_DIR)/pingfederate-12.2.0/pingfederate/sbin/pingfederate-run.sh
 
           echo "Deployment complete."
