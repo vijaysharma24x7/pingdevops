@@ -8,7 +8,7 @@ variables:
   PF_FILENAME: "pingfederate-12.2.0.zip"
   INSTALL_DIR: "/datadrive/pingdevops"
   JAVA_DIR: "/datadrive/pingdevops/jdk"
-  PF_DIR: "/datadrive/pingdevops/pf"
+  PF_DIR: "/datadrive/pingdevops"
 
 stages:
 - stage: DeployPingFederate
@@ -62,7 +62,7 @@ stages:
 
           echo "Unzipping PingFederate..."
           sudo unzip -o /tmp/$(PF_FILENAME) -d $(INSTALL_DIR)
-          sudo mv $(INSTALL_DIR)/pingfederate-* $(PF_DIR)
+   
 
           echo "Starting PingFederate..."
           export JAVA_HOME=/datadrive/pingdevops/jdk
