@@ -58,11 +58,9 @@ stages:
           echo "export JAVA_HOME=$(JAVA_DIR)" | sudo tee -a /etc/profile
           echo "export PATH=\$JAVA_HOME/bin:\$PATH" | sudo tee -a /etc/profile
           source /etc/profile
-          
 
           echo "Unzipping PingFederate..."
           sudo unzip -o /tmp/$(PF_FILENAME) -d $(INSTALL_DIR)
-   
 
           echo "Starting PingFederate..."
           export JAVA_HOME=/datadrive/pingdevops/jdk
@@ -70,3 +68,31 @@ stages:
 
           echo "Deployment complete."
       displayName: Install JDK & PingFederate and Start Server
+
+- stage: DeletePingFederate
+  displayName: Delete PingFederate Deployment
+  jobs:
+  - job: DeleteDeployment
+    displayName: Delete Deployment
+    pool:
+      vmImage: 'ubuntu-latest'
+
+    steps:
+    - task: SSH@0
+      name: StopAndDelete
+      inputs:
+        sshEndpoint: 'pfdockerpoc_sc'
+        runOptions: inline
+        inline: |
+          echo "Stopping PingFederate..."
+          pkill -f pingfederate
+
+          echo "Removing installation directory..."
+          sudo rm -rf $(INSTALL_DIR)
+
+          echo "Removing JDK and PingFederate files from /tmp..."
+          sudo rm -f /tmp/$(JDK_FILENAME)
+          sudo rm -f /tmp/$(PF_FILENAME)
+
+          echo "Deployment deleted."
+      displayName: Stop PingFederate and Delete Installation
