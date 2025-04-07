@@ -58,6 +58,7 @@ stages:
           echo "export JAVA_HOME=$(JAVA_DIR)" | sudo tee -a /etc/profile
           echo "export PATH=\$JAVA_HOME/bin:\$PATH" | sudo tee -a /etc/profile
           source /etc/profile
+          env
 
           echo "Unzipping PingFederate..."
           sudo unzip -o /tmp/$(PF_FILENAME) -d $(INSTALL_DIR)
