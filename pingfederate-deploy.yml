@@ -61,7 +61,7 @@ stages:
 
           echo "Unzipping PingFederate..."
           sudo unzip -o /tmp/$(PF_FILENAME) -d $(INSTALL_DIR)
-          sudo mv $(INSTALL_DIR)/pingfederate-* $(PF_DIR)
+       #   sudo mv $(INSTALL_DIR)/pingfederate-* $(PF_DIR)
 
           echo "Starting PingFederate..."
           sudo nohup $(PF_DIR)/pingfederate-12.2.0/pingfederate/bin/run.sh &
