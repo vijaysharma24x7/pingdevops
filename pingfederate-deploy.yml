@@ -1,5 +1,5 @@
 trigger:
-- feature1
+- none
 
 variables:
   JDK_URL: "https://vijay101.blob.core.windows.net/storage/jdk-11.0.20_linux-x64_bin.tar.gz"
